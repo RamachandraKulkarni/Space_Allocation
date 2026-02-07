@@ -1,0 +1,586 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  rulecolor=\color{gray!40},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+}
+
+\title{\textbf{Space Allocation Planner}\\[0.5em]
+  \large How-to Guide}
+\author{Space Allocation Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ────────────────────────────────────────────────────────────────
+\section{Overview}
+% ────────────────────────────────────────────────────────────────
+
+The Space Allocation Planner is a React + TypeScript web dashboard that helps
+programme administrators and facilities teams answer one question:
+\textbf{``Given N students across several programs, how do we assign studio
+groups to available rooms without exceeding building capacity?''}
+
+Key features:
+\begin{itemize}
+  \item Upload or swap room-inventory CSVs with no code changes needed.
+  \item Create student groups (studios) with configurable size caps.
+  \item Optionally mix students from different programs within each studio.
+  \item A three-pass allocation algorithm that respects per-floor capacity
+        buffers.
+  \item Visual diagnostics that flag unassigned groups and exhausted floors.
+  \item One-click CSV export of the final allocation.
+  \item Built-in staffing cost modelling (faculty, TAs, graders).
+\end{itemize}
+
+% ────────────────────────────────────────────────────────────────
+\section{Quick Start}
+% ────────────────────────────────────────────────────────────────
+
+\begin{lstlisting}[language=bash]
+# 1. Install dependencies
+npm install
+
+# 2. Start the development server
+npm run dev
+# Opens at http://localhost:5173
+
+# 3. Production build
+npm run build
+
+# 4. Preview the production build locally
+npm run preview
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════════
+\part*{For Non-Technical Users}
+\addcontentsline{toc}{section}{How-to Guide --- Non-Technical Users}
+% ════════════════════════════════════════════════════════════════
+
+\section{What the Application Does}
+
+The Space Allocation Planner takes two inputs --- your \textbf{room inventory}
+and your \textbf{programme enrolment numbers} --- and automatically assigns
+student groups to rooms.  It ensures that no room or floor is over-booked
+beyond a safe buffer, and it calculates associated staffing costs.
+
+You do not need any programming knowledge to use the application once it is
+running in your web browser.
+
+% ────────────────────────────────────────────────────────────────
+\section{Step-by-Step Usage}
+% ────────────────────────────────────────────────────────────────
+
+\subsection{Step 1 --- Open the Application}
+
+Navigate to the URL where the app is hosted (e.g.,
+\texttt{http://localhost:5173} when running locally).  You will see the
+\textbf{Space Allocation Planner} dashboard with a form at the top.
+
+\subsection{Step 2 --- Set Allocation Parameters}
+
+\begin{longtable}{@{}p{4cm}p{10cm}@{}}
+\toprule
+\textbf{Field} & \textbf{What It Means} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Field} & \textbf{What It Means} \\
+\midrule
+\endhead
+Number of Programs &
+  How many separate academic programs are being allocated (e.g., 2 for
+  Architecture and Interior Design). \\
+Studio Cap &
+  The maximum number of students in a single studio group (e.g., 20). \\
+Allow multi-program mixing &
+  When checked, each studio group will contain an equal share of students
+  from every program.  When unchecked, studios are single-program only. \\
+Program Sizes &
+  For each program, enter a label (e.g., ``Architecture'') and the number
+  of enrolled students.  Use \textbf{Remove} to delete a row or increase
+  the program count to add more. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Step 3 --- Set Financial Inputs (Optional)}
+
+These fields feed the staffing cost model.  They do not affect room
+assignments.
+
+\begin{longtable}{@{}p{4.5cm}p{9.5cm}@{}}
+\toprule
+\textbf{Field} & \textbf{What It Means} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Field} & \textbf{What It Means} \\
+\midrule
+\endhead
+Total Students (override) &
+  Leave blank to use the sum of program sizes.  Enter a number here only
+  if you need the cost model to assume a different student count. \\
+Semesters per Year &
+  Typically 2.  Used to annualise TA compensation. \\
+TA/FA Compensation &
+  Dollar amount paid to each TA or FA per semester. \\
+Faculty / TAs-FAs / Graders &
+  Head counts for each staff role.  Adjust these to model different
+  scenarios. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Step 4 --- Click ``Calculate Allocation''}
+
+The dashboard updates with several result panels:
+
+\begin{longtable}{@{}p{3.5cm}p{10.5cm}@{}}
+\toprule
+\textbf{Panel} & \textbf{What It Shows} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Panel} & \textbf{What It Shows} \\
+\midrule
+\endhead
+Totals Row &
+  Summary counts: rooms available, floors, max capacity, students
+  required. \\
+Studios Table &
+  Every studio group generated, its size, program breakdown, and the room
+  it was assigned to. \\
+Rooms Table &
+  Each room, its base and dynamic capacity, extra capacity used, and the
+  studios placed in it. \\
+Finance Summary &
+  Annualised staffing cost breakdown per role (compensation, ERE, risk,
+  tech fee, admin charge). \\
+Floor Limits &
+  Per-floor capacity status showing how much buffer remains on each
+  floor. \\
+Diagnostics &
+  Warnings and errors, such as groups that could not be placed or floors
+  that ran out of buffer. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Step 5 --- Refine the Results}
+
+\begin{description}[style=nextline]
+  \item[Toggle Rooms]
+    Use the \emph{Room Selection} panel to include or exclude individual
+    rooms (or individual rooms within a combined zone) before
+    recalculating.
+  \item[Rotate Allocation]
+    Click \emph{Rotate Allocation} to shuffle the order rooms are
+    considered.  This produces a different valid assignment without
+    changing the groups.
+  \item[Export CSV]
+    Click \emph{Export CSV} to download the final allocation as a
+    spreadsheet-compatible file.
+\end{description}
+
+\subsection{Step 6 --- Reset}
+
+Click \textbf{Reset defaults} at the bottom of the form to restore all
+fields to their original values.
+
+% ────────────────────────────────────────────────────────────────
+\section{Understanding the Results}
+% ────────────────────────────────────────────────────────────────
+
+\begin{itemize}
+  \item \textbf{Green rows} in the Studios table indicate successfully
+        assigned groups.
+  \item \textbf{Red or highlighted rows} indicate unassigned groups ---
+        these studios could not fit in any available room.
+  \item A \textbf{``No floor buffer left''} diagnostic means a floor has
+        reached its maximum allowed capacity (base + 15\% buffer by
+        default).
+  \item \textbf{Extra Capacity Used} in the Rooms table shows how many
+        seats beyond the room's base occupancy are being used, drawn from
+        the floor buffer.
+\end{itemize}
+
+% ────────────────────────────────────────────────────────────────
+\section{Updating Room Data (No Code Required)}
+% ────────────────────────────────────────────────────────────────
+
+The application reads two CSV files from the \texttt{public/data/} folder.
+To update room information:
+
+\begin{enumerate}
+  \item \textbf{\texttt{space\_division.csv}} --- Export an updated room
+        list from Astra (or create one manually).  Required columns:
+        \texttt{BUILDING}, \texttt{LEVEL}, \texttt{STUDIO}, \texttt{ROOM},
+        \texttt{ASTRA OCCUPANCY}.
+  \item \textbf{\texttt{combined\_spaces.csv}} --- Define zones (groups of
+        rooms treated as one space).  Required columns:
+        \texttt{combined\_id}, \texttt{members},
+        \texttt{capacity\_override}, \texttt{mode}.
+\end{enumerate}
+
+Replace the files in \texttt{public/data/} and refresh the browser.  The
+dashboard will load the new data automatically.
+
+% ════════════════════════════════════════════════════════════════
+\part*{For Technical Users}
+\addcontentsline{toc}{section}{How-to Guide --- Technical Users}
+% ════════════════════════════════════════════════════════════════
+
+\section{Tech Stack}
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Version} \\
+\midrule
+Frontend       & React + TypeScript  & 19 / 5.9 \\
+Build tool     & Vite                & 7.2 \\
+UI components  & Material-UI (MUI)   & v7.3 \\
+Data tables    & MUI X DataGrid      & v8.20 \\
+Forms          & React Hook Form + Zod & 7.67 / 4.1 \\
+CSV parsing    & Papa Parse           & 5.5.3 \\
+Styling        & Emotion             & --- \\
+Linting        & ESLint + TS ESLint  & 9.39 \\
+\bottomrule
+\end{tabular}
+
+% ────────────────────────────────────────────────────────────────
+\section{Project Structure}
+
+\begin{lstlisting}
+Space_Allocation/
+  public/
+    data/
+      space_division.csv      # Room inventory (Astra export)
+      combined_spaces.csv     # Zone definitions
+  src/
+    components/
+      AllocationForm.tsx      # Parameter entry form
+      GroupTable.tsx           # Studios data grid
+      RoomTable.tsx            # Room assignments data grid
+      FloorSummary.tsx         # Floor capacity utilisation
+      DiagnosticsPanel.tsx     # Warnings and errors
+      FinanceSummaryPanel.tsx  # Staffing cost breakdown
+      AllocationActions.tsx    # Rotate / Export buttons
+      RoomSelectionPanel.tsx   # Toggle rooms in/out
+    hooks/
+      useSpaceData.ts          # CSV loading and room state
+      useAllocationEngine.ts   # Grouping to allocation pipeline
+    pages/
+      DashboardPage.tsx        # Main layout
+    utils/
+      allocation.ts            # 3-pass allocation algorithm
+      grouping.ts              # Studio generation
+      capacity.ts              # Floor buffer tracking
+      spaceTransform.ts        # CSV normalisation and floor summaries
+      finance.ts               # Staffing cost calculations
+      export.ts                # CSV export
+      csv.ts                   # Papa Parse wrapper
+    types/
+      index.ts                 # TypeScript type definitions
+    App.tsx                    # Theme setup + root component
+    main.tsx                   # Application entry point
+  docs/
+    how-to-guide.tex           # This document
+  package.json
+  vite.config.ts
+  tsconfig.json
+  eslint.config.js
+\end{lstlisting}
+
+% ────────────────────────────────────────────────────────────────
+\section{Architecture and Data Flow}
+
+\begin{enumerate}
+  \item \textbf{CSV Loading} ---
+        \texttt{useSpaceData} fetches \texttt{space\_division.csv} and
+        \texttt{combined\_spaces.csv} at startup, parses them with Papa
+        Parse, and normalises the data into \texttt{Room[]} and
+        \texttt{Floor[]} arrays.
+  \item \textbf{User Input} ---
+        \texttt{AllocationForm} collects program sizes, studio cap, mixing
+        preference, and financial parameters.  Validation uses Zod.
+  \item \textbf{Grouping} ---
+        \texttt{generateStudios()} builds studio groups respecting the cap
+        and mixing rules.
+  \item \textbf{Allocation} ---
+        \texttt{allocateStudiosToRooms()} runs the three-pass algorithm
+        (see next section).
+  \item \textbf{Finance} ---
+        \texttt{buildFinanceSummary()} calculates staffing costs.
+  \item \textbf{Display} ---
+        MUI DataGrids render studios, rooms, floor states, diagnostics,
+        and the finance breakdown.
+\end{enumerate}
+
+% ────────────────────────────────────────────────────────────────
+\section{CSV Input Formats}
+% ────────────────────────────────────────────────────────────────
+
+\subsection{\texttt{space\_division.csv}}
+
+Exported from Astra scheduling software.  Building and level values carry
+forward to subsequent rows when left blank.
+
+\begin{lstlisting}
+BUILDING,LEVEL,STUDIO,ROOM,ASTRA OCCUPANCY,...
+Design South (DS),Level - 1,-,143,30,,,,
+,Level - 2,-,220,16,,,,
+,,,221,24,,,,
+\end{lstlisting}
+
+\begin{tabular}{@{}llp{8cm}@{}}
+\toprule
+\textbf{Column} & \textbf{Required} & \textbf{Description} \\
+\midrule
+\texttt{BUILDING}          & Yes & Building name (carries forward when blank) \\
+\texttt{LEVEL}             & Yes & Floor label (carries forward when blank) \\
+\texttt{STUDIO}            & No  & If set, room is part of a combined space \\
+\texttt{ROOM}              & Yes & Unique room number \\
+\texttt{ASTRA OCCUPANCY}   & Yes & Room capacity (seats) \\
+Others                     & No  & Ignored by the application \\
+\bottomrule
+\end{tabular}
+
+\subsection{\texttt{combined\_spaces.csv}}
+
+Defines zones --- groups of rooms that function as a single combined space.
+
+\begin{lstlisting}
+combined_id,members,capacity_override,mode
+DS-320-321,"320,321",110,zone
+DN-265-283,"265,267,269,271,277,281,283",210,zone
+\end{lstlisting}
+
+\begin{tabular}{@{}llp{8cm}@{}}
+\toprule
+\textbf{Column} & \textbf{Required} & \textbf{Description} \\
+\midrule
+\texttt{combined\_id}        & Yes & Unique identifier for the zone \\
+\texttt{members}             & Yes & Comma-separated list of room numbers \\
+\texttt{capacity\_override}  & No  & Override summed capacity; if blank, members are added \\
+\texttt{mode}                & No  & Currently only \texttt{zone} is used \\
+\bottomrule
+\end{tabular}
+
+% ────────────────────────────────────────────────────────────────
+\section{Allocation Algorithm Deep Dive}
+% ────────────────────────────────────────────────────────────────
+
+The allocation engine (\texttt{src/utils/allocation.ts}) runs a
+\textbf{greedy three-pass} algorithm.
+
+\subsection{Preparation}
+
+\begin{enumerate}
+  \item \texttt{generateStudios()} creates studio groups from program
+        sizes, respecting the studio cap and mixing preferences.
+  \item Studios are sorted \emph{largest-first} so big groups are placed
+        before small ones.
+  \item Rooms are shuffled using a seeded linear-congruential generator
+        (LCG) so that results are reproducible but can be rotated.
+\end{enumerate}
+
+\subsection{Three Allocation Passes}
+
+\begin{tabular}{@{}clp{7.5cm}@{}}
+\toprule
+\textbf{Pass} & \textbf{Strategy} & \textbf{Room Constraint} \\
+\midrule
+1 & Strict &
+  Only assign if the studio fits within the room's base capacity minus
+  already-used seats: \newline
+  \texttt{baseCapacity - usedCapacity >= studioSize} \\
+2 & Next fit &
+  Use the room's dynamic capacity (base + previously borrowed extra):
+  \newline
+  \texttt{dynamicCapacity - usedCapacity >= studioSize} \\
+3 & Dynamic &
+  Allow exceeding base capacity by borrowing from the floor buffer, if
+  buffer remains: \newline
+  \texttt{extraAllowed - extraUsed >= incrementalExtra} \\
+\bottomrule
+\end{tabular}
+
+\subsection{Floor Buffer}
+
+Each floor may exceed its summed base capacity by up to
+\texttt{FLOOR\_BUFFER\_RATIO} (default 15\%).  When a room borrows extra
+seats, the increment is deducted from the floor's remaining buffer.
+
+\subsection{Diagnostics}
+
+Any studio that fails all three passes is marked unassigned, and a
+diagnostic message is recorded.  Common diagnostics include:
+
+\begin{itemize}
+  \item ``Unable to place S-001 (size 20).  Marked as unassignable.''
+  \item ``No floor buffer left for Room 220.''
+  \item ``Floor context missing for Room 143.''
+\end{itemize}
+
+% ────────────────────────────────────────────────────────────────
+\section{Finance Model}
+% ────────────────────────────────────────────────────────────────
+
+The finance module (\texttt{src/utils/finance.ts}) calculates annualised
+staffing costs using the following formula per role:
+
+\begin{lstlisting}
+compensation = baseRate * headCount
+ERE          = compensation * ereRate
+risk         = compensation * 1.1%
+techFee      = compensation * 2.5%
+subtotal     = compensation + ERE + risk + techFee
+adminCharge  = subtotal * 8.5%
+totalCost    = subtotal + adminCharge
+\end{lstlisting}
+
+Default rates:
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Role} & \textbf{Base Compensation} & \textbf{ERE Rate} \\
+\midrule
+Faculty  & \$85,000 / year                     & 30.6\% \\
+TA / FA  & User-entered per semester, annualised & 11.0\% \\
+Grader   & \$18,000 / year                      & 1.9\%  \\
+\bottomrule
+\end{tabular}
+
+% ────────────────────────────────────────────────────────────────
+\section{Customization Reference}
+% ────────────────────────────────────────────────────────────────
+
+\subsection{No-Code Customizations}
+
+\begin{tabular}{@{}p{4cm}p{10cm}@{}}
+\toprule
+\textbf{What to Change} & \textbf{How} \\
+\midrule
+Room inventory &
+  Replace \texttt{public/data/space\_division.csv} with a new Astra
+  export. \\
+Combined zones &
+  Edit \texttt{public/data/combined\_spaces.csv}. \\
+Program count, sizes, mixing &
+  Change values in the dashboard form. \\
+Include/exclude rooms &
+  Toggle checkboxes in the Room Selection panel. \\
+Shuffle assignment order &
+  Click \emph{Rotate Allocation}. \\
+\bottomrule
+\end{tabular}
+
+\subsection{Code-Level Customizations}
+
+\begin{longtable}{@{}p{3.5cm}p{4.5cm}p{6cm}@{}}
+\toprule
+\textbf{What to Change} & \textbf{File} & \textbf{Constant / Location} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{What to Change} & \textbf{File} & \textbf{Constant / Location} \\
+\midrule
+\endhead
+Floor buffer \% &
+  \texttt{spaceTransform.ts} &
+  \texttt{FLOOR\_BUFFER\_RATIO} (default \texttt{0.15}) \\
+Default shuffle seed &
+  \texttt{allocation.ts} &
+  \texttt{DEFAULT\_SEED} (default \texttt{17}) \\
+Theme colours &
+  \texttt{App.tsx} &
+  \texttt{createTheme(\{ palette \})} \\
+Form defaults &
+  \texttt{AllocationForm.tsx} &
+  \texttt{defaultValues} object \\
+Faculty salary &
+  \texttt{finance.ts} &
+  \texttt{COMPENSATION\_MATRIX[0].compensation} \\
+Grader salary &
+  \texttt{finance.ts} &
+  \texttt{COMPENSATION\_MATRIX[2].compensation} \\
+Rate constants &
+  \texttt{finance.ts} &
+  \texttt{RISK\_RATE}, \texttt{TECH\_FEE\_RATE}, etc. \\
+Allocation logic &
+  \texttt{allocation.ts} &
+  \texttt{findRoomByStrategy()} \\
+Grouping logic &
+  \texttt{grouping.ts} &
+  \texttt{generateStudios()} \\
+Export columns &
+  \texttt{export.ts} &
+  \texttt{exportAllocationCsv()} \\
+\bottomrule
+\end{longtable}
+
+% ────────────────────────────────────────────────────────────────
+\section{Running the App}
+% ────────────────────────────────────────────────────────────────
+
+\begin{lstlisting}[language=bash]
+# Install dependencies (re-run if package.json changes)
+npm install
+
+# Start development server at http://localhost:5173
+npm run dev
+
+# Type-check and build for production (output in /dist)
+npm run build
+
+# Serve the production build locally
+npm run preview
+
+# Lint the codebase
+npm run lint
+\end{lstlisting}
+
+% ────────────────────────────────────────────────────────────────
+\section{Notes and Next Steps}
+% ────────────────────────────────────────────────────────────────
+
+\begin{itemize}
+  \item The dev server is not auto-started; run \texttt{npm run dev} when
+        you are ready.
+  \item Vite warns about a ${>}500$\,kB bundle because of MUI/DataGrid.
+        Add manual chunking in \texttt{vite.config.ts} if you need
+        smaller bundles.
+  \item If facilities provide explicit floor-area or capacity-limit
+        columns, replace the proxy logic in \texttt{spaceTransform.ts} to
+        use those authoritative values.
+  \item No test framework is configured yet.  Consider adding Vitest for
+        unit tests covering \texttt{allocation.ts} and
+        \texttt{grouping.ts}.
+\end{itemize}
+
+\end{document}
